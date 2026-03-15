@@ -1,5 +1,6 @@
 use num_bigint::BigUint;
 use rand::{Rng, rng};
+use sha2::{Sha256, Digest};
 
 fn main() {
     let p = BigUint::parse_bytes(
@@ -29,9 +30,6 @@ fn main() {
     rng.fill_bytes(&mut bytes);
     let b = BigUint::from_bytes_be(&bytes);
 
-    // println!("Alice got {a}");
-    // println!("Bob   got {b}");
-
     let x = g.modpow(&a, &p);
     let y = g.modpow(&b, &p);
 
@@ -39,8 +37,16 @@ fn main() {
     let k_b = x.modpow(&b, &p);
 
     if k_a == k_b {
-        println!("eazzie-hellman");
+        println!("eazzie-hellman! proceeding...");
     } else {
         eprintln!("gone wrong...");
+        std::process::exit(69);
     }
+
+    let k = k_a;
+    let mut hasher = Sha256::new();
+    hasher.update(&k.to_bytes_be());
+    let key = hasher.finalize();
+
+    println!("Key: {:x}", key);
 }
