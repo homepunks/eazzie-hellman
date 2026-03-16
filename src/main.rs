@@ -1,8 +1,10 @@
 use num_bigint::BigUint;
-use rand::{Rng, rng};
+use rand::Rng;
 use sha2::{Sha256, Digest};
+use aes_gcm::{aead::{OsRng, Aead, AeadCore, KeyInit}, Aes256Gcm};
+use anyhow::Context;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let p = BigUint::parse_bytes(
         b"FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1\
             29024E088A67CC74020BBEA63B139B22514A08798E3404DD\
@@ -17,36 +19,40 @@ fn main() {
             15728E5A8AACAA68FFFFFFFFFFFFFFFF",
         16,
     )
-    .unwrap();
+    .context("failed to parse prime")?;
 
     let g = BigUint::from(2u32);
 
-    let mut rng = rng();
+    let mut rng = rand::rng();
     let mut bytes = vec![0u8; 256];
-
     rng.fill_bytes(&mut bytes);
     let a = BigUint::from_bytes_be(&bytes);
-
     rng.fill_bytes(&mut bytes);
     let b = BigUint::from_bytes_be(&bytes);
 
     let x = g.modpow(&a, &p);
     let y = g.modpow(&b, &p);
-
     let k_a = y.modpow(&a, &p);
     let k_b = x.modpow(&b, &p);
 
-    if k_a == k_b {
-        println!("eazzie-hellman! proceeding...");
-    } else {
-        eprintln!("gone wrong...");
-        std::process::exit(69);
+    if k_a != k_b {
+        anyhow::bail!("key exchange failed");
     }
 
-    let k = k_a;
-    let mut hasher = Sha256::new();
-    hasher.update(&k.to_bytes_be());
-    let key = hasher.finalize();
-
+    let key = Sha256::digest(k_a.to_bytes_be());
     println!("Key: {:x}", key);
+
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .context("invalid key length")?;
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let plaintext = b"Simplicity is prerequisite for reliability";
+
+    let ciphertext = cipher.encrypt(&nonce, plaintext.as_ref())
+        .map_err(|_| anyhow::anyhow!("encryption failed"))?;
+    let decrypted = cipher.decrypt(&nonce, ciphertext.as_ref())
+        .map_err(|_| anyhow::anyhow!("decryption failed"))?;
+
+    println!("{}", String::from_utf8(decrypted).context("invalid utf8")?);
+
+    Ok(())
 }
