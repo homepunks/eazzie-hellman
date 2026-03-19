@@ -1,8 +1,11 @@
+use aes_gcm::{
+    Aes256Gcm,
+    aead::{Aead, AeadCore, KeyInit, OsRng},
+};
+use anyhow::Context;
 use num_bigint::BigUint;
 use rand::Rng;
-use sha2::{Sha256, Digest};
-use aes_gcm::{aead::{OsRng, Aead, AeadCore, KeyInit}, Aes256Gcm};
-use anyhow::Context;
+use sha2::{Digest, Sha256};
 
 fn main() -> anyhow::Result<()> {
     let p = BigUint::parse_bytes(
@@ -42,14 +45,15 @@ fn main() -> anyhow::Result<()> {
     let key = Sha256::digest(k_a.to_bytes_be());
     println!("Key: {:x}", key);
 
-    let cipher = Aes256Gcm::new_from_slice(&key)
-        .context("invalid key length")?;
+    let cipher = Aes256Gcm::new_from_slice(&key).context("invalid key length")?;
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
     let plaintext = b"Simplicity is prerequisite for reliability";
 
-    let ciphertext = cipher.encrypt(&nonce, plaintext.as_ref())
+    let ciphertext = cipher
+        .encrypt(&nonce, plaintext.as_ref())
         .map_err(|_| anyhow::anyhow!("encryption failed"))?;
-    let decrypted = cipher.decrypt(&nonce, ciphertext.as_ref())
+    let decrypted = cipher
+        .decrypt(&nonce, ciphertext.as_ref())
         .map_err(|_| anyhow::anyhow!("decryption failed"))?;
 
     println!("{}", String::from_utf8(decrypted).context("invalid utf8")?);
