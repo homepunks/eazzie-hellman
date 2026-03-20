@@ -1,9 +1,10 @@
+pub mod crypto;
 pub mod handlers;
 pub mod models;
-pub mod crypto;
 
 pub const ADDR: &str = "0.0.0.0:6969";
 
+#[rustfmt::skip]
 pub const MODP_2048: &[u8] =
           b"FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1\
             29024E088A67CC74020BBEA63B139B22514A08798E3404DD\

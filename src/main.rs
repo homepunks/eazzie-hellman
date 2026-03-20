@@ -1,7 +1,7 @@
 use axum::{Router, routing::get};
+use eazzie_hellman::{ADDR, handlers::health_check};
 use tokio::net;
 use tower_http::trace::TraceLayer;
-use eazzie_hellman::{ADDR, handlers::health_check};
 
 #[tokio::main]
 async fn main() {
